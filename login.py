@@ -8,53 +8,18 @@ from config import *
 import json
 
 
-def get_element_by_id(driver, value):
+def get_element(driver, by, value):
     element = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_element_located((By.ID, value))
+        EC.presence_of_element_located((by, value))
     )
     return element
 
 
-def get_element_by_class(driver, value):
-    element = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_element_located((By.CLASS_NAME, value))
-    )
-    return element
-
-
-def get_all_elements_by_class(driver, value):
+def get_all_elements(driver, by, value):
     elements = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_all_elements_located((By.CLASS_NAME, value))
+        EC.presence_of_all_elements_located((by, value))
     )
     return elements
-
-
-def get_all_elements_by_xpath(driver, value):
-    elements = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_all_elements_located((By.XPATH, value))
-    )
-    return elements
-
-
-def get_element_by_tag(driver, value):
-    element = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_element_located((By.TAG_NAME, value))
-    )
-    return element
-
-
-def get_element_by_xpath(driver, value):
-    element = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_element_located((By.XPATH, value))
-    )
-    return element
-
-
-def get_element_by_name(driver, value):
-    element = WebDriverWait(driver=driver, timeout=5).until(
-        EC.presence_of_element_located((By.NAME, value))
-    )
-    return element
 
 
 # Fun begins;)
@@ -63,19 +28,19 @@ def login(driver, email, password):
     site = "https://aims.iith.ac.in/aims/login/loginHome"
     driver.get(site)
     try:
-        email_inp = get_element_by_id(driver=driver, value="uid")
-        password_inp = get_element_by_id(driver=driver, value="pswrd")
+        email_inp = get_element(driver=driver, by=By.ID, value="uid")
+        password_inp = get_element(driver=driver, by=By.ID, value="pswrd")
 
         email_inp.send_keys(email)
         password_inp.send_keys(password)
 
-        captcha_image = get_element_by_id(driver=driver, value="appCaptchaLoginImg")
+        captcha_image = get_element(driver=driver, by=By.ID, value="appCaptchaLoginImg")
         captcha = captcha_image.get_attribute("src")[-5:]
 
-        captcha_field = get_element_by_id(driver=driver, value="captcha")
+        captcha_field = get_element(driver=driver, by=By.ID, value="captcha")
         captcha_field.send_keys(captcha)
 
-        submit = get_element_by_name(driver=driver, value="signIn")
+        submit = get_element(driver=driver, by=By.NAME, value="signIn")
         submit.click()
         time.sleep(10)
     except:
@@ -87,11 +52,11 @@ def homepage(driver, actions):
     # driver.get(site)
     try:
 
-        academic = get_element_by_xpath(driver, "//span[@title='Academic']")
+        academic = get_element(driver, By.XPATH, "//span[@title='Academic']")
         # print(academic.get_attribute("title"))
         actions.click(on_element=academic)
 
-        view_courses = get_element_by_xpath(driver, "//span[@title='View My Courses']")
+        view_courses = get_element(driver, By.XPATH, "//span[@title='View My Courses']")
         actions.move_to_element(to_element=view_courses).click(on_element=view_courses)
         actions.perform()
     except:
@@ -99,7 +64,7 @@ def homepage(driver, actions):
 
 
 def courses_page(driver):
-    course_elements = get_all_elements_by_class(driver, value=r'tab_body_bg')
+    course_elements = get_all_elements(driver, by=By.CLASS_NAME, value=r'tab_body_bg')
 
     MAIN_DICT = {
         "courses": []
@@ -111,8 +76,6 @@ def courses_page(driver):
 
         if num_classes > 3:
             num_semesters += 1
-
-    print(num_semesters)
 
     for elem in course_elements:
         lis = elem.find_elements(By.XPATH, value=".//*")
@@ -133,7 +96,6 @@ def courses_page(driver):
 
         MAIN_DICT["courses"].append(course_dict)
     driver.quit()
-    print(MAIN_DICT)
     with open("CPI.json", "w+") as file:
         json.dump(MAIN_DICT, file)
 
@@ -185,7 +147,7 @@ def cpi_calculator():
             else:
                 print(f"Your haven't done any credits in Semester {i} or the courses aren't graded yet")
 
-        print(f"Your Overall CGPA till now is {total_p / total_cre}", end="\n\n")
+        print(f"\nYour Overall CGPA till now is {total_p / total_cre}", end="\n\n")
 
         for course in data:
             if course['Course Type'] not in types.keys():
