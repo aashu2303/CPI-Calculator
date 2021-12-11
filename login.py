@@ -170,6 +170,6 @@ def initialize():
 
 
 if __name__ == '__main__':
-    # initialize()
+    initialize()
     time.sleep(1)
     cpi_calculator()
