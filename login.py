@@ -5,18 +5,20 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 from config import *
-import json
+import pickle
+import pandas as pd
+import numpy as np
 
 
 def get_element(driver, by, value):
-    element = WebDriverWait(driver=driver, timeout=5).until(
+    element = WebDriverWait(driver=driver, timeout=10).until(
         EC.presence_of_element_located((by, value))
     )
     return element
 
 
 def get_all_elements(driver, by, value):
-    elements = WebDriverWait(driver=driver, timeout=5).until(
+    elements = WebDriverWait(driver=driver, timeout=10).until(
         EC.presence_of_all_elements_located((by, value))
     )
     return elements
@@ -48,12 +50,9 @@ def login(driver, email, password):
 
 
 def homepage(driver, actions):
-    # site = "https://aims.iith.ac.in/aims/login/home"
-    # driver.get(site)
     try:
 
         academic = get_element(driver, By.XPATH, "//span[@title='Academic']")
-        # print(academic.get_attribute("title"))
         actions.click(on_element=academic)
 
         view_courses = get_element(driver, By.XPATH, "//span[@title='View My Courses']")
@@ -96,8 +95,8 @@ def courses_page(driver):
 
         MAIN_DICT["courses"].append(course_dict)
     driver.quit()
-    with open("CPI.json", "w+") as file:
-        json.dump(MAIN_DICT, file)
+    with open("CPI.pkl", 'wb') as file:
+        pickle.dump(MAIN_DICT, file)
 
 
 def get_grade(char):
@@ -121,48 +120,29 @@ def get_grade(char):
         return None
 
 
-def cpi_calculator():
-    credits = []
-    points = []
-    types = {}
-    with open("CPI.json", "r") as file:
-        data = json.load(file)["courses"]
-        sem = data[0]["Semester"]
-        total_p = 0
-        total_cre = 0
+def cpi():
+    with open("CPI.pkl", "rb") as file:
+        data = pickle.load(file)
+    course_data = pd.DataFrame(data["courses"]).replace("", np.nan).dropna()
+    CREDITS = np.sum(course_data["Credits"])
+    POINTS = 0
+    # print(course_data.to_string())
+    for group, frame in course_data.groupby("Semester"):
+        credits = frame["Credits"]
+        grades = frame["Grade"].apply(get_grade)
+        points = credits * grades
+        POINTS += np.sum(points)
+        print(f"Semester-{group} GPA: {np.sum(points / np.sum(credits))}")
 
-        for i in range(sem, 0, -1):
-            p = 0
-            cre = 0
-            for course in data:
-                if course['Semester'] == i and get_grade(course['Grade']) is not None:
-                    cre += course['Credits']
-                    total_cre += course["Credits"]
-                    p += course['Credits'] * get_grade(course['Grade'])
-                    total_p += course['Credits'] * get_grade(course['Grade'])
-            points.append(p)
-            credits.append(cre)
-            if cre != 0:
-                print(f"Your Semester {i} CGPA is {points[sem - i] / credits[sem - i]}")
-            else:
-                print(f"Your haven't done any credits in Semester {i} or the courses aren't graded yet")
+    print(f"\nCumulative GPA: {POINTS / CREDITS}")
+    print(f"Total Credits done: {CREDITS}\n")
 
-        print(f"\nYour Overall CGPA till now is {total_p / total_cre}", end="\n\n")
-
-        for course in data:
-            if course['Course Type'] not in types.keys():
-                types[course['Course Type']] = 0
-
-            if get_grade(course['Grade']) is not None:
-                types[course['Course Type']] += course['Credits']
-        print("This is the list of credits done in each type of course")
-        for key, value in types.items():
-            print(f"{key} : {value} credits")
+    for group, frame in course_data.groupby("Course Type"):
+        print(f"{group}: {np.sum(frame['Credits'])}")
 
 
 def initialize():
-    driver = webdriver.Chrome(Driver_Path)
-    driver.set_window_size(1280, 1080)
+    driver = webdriver.Chrome(executable_path=Driver_Path)
     actions = ActionChains(driver)
     login(driver, email, password)
     homepage(driver, actions)
@@ -170,6 +150,6 @@ def initialize():
 
 
 if __name__ == '__main__':
-    initialize()
+    # initialize()
     time.sleep(1)
-    cpi_calculator()
+    cpi()
